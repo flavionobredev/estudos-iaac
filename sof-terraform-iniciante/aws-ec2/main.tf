@@ -9,3 +9,17 @@ terraform {
   }
 }
 
+provider "aws" {
+  profile = "terraform"
+  region = "sa-east-1"
+}
+
+resource "aws_instance" "SAYGGP1" {
+  ami = "ami-0b0d54b52c62864d6"
+  instance_type = "t2.micro"
+  key_name = "bet_statistic"
+  tags = {
+    Name = "SAYGGP1"
+  }
+}
+
