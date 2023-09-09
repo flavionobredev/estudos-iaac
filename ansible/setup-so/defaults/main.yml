@@ -1,0 +1,21 @@
+---
+rpm_packages:
+  - chrony
+  - curl
+  - git
+  - htop
+  - lynis
+  - psacct
+  - sysstat
+  - vim
+  - unzip
+  
+deb_packages:
+  - chrony
+  - curl
+  - git
+  - htop
+  - lynis
+  - sysstat
+  - vim
+  - unzip

@@ -1,0 +1,117 @@
+- name: Instalando repositorio Lynis
+  copy:
+    src: lynis.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux"
+  tags: update
+
+- name: Instalando repositorio Lynis
+  shell:  /usr/bin/amazon-linux-extras enable {{ item }}
+  with_items:
+    - epel
+    - lynis
+  when: ansible_distribution == "Amazon"
+  tags: update
+
+- name: Habilitando repositorio PowerTools
+  replace:
+    dest: /etc/yum.repos.d/CentOS-Stream-PowerTools.repo
+    regexp: 'enabled=0'
+    replace: 'enabled=1'
+  when: ansible_distribution_major_version == "8" and ansible_distribution_release == "Stream"
+  tags: update
+
+- name: Habilitando repositorio PowerTools
+  replace:
+    dest: /etc/yum.repos.d/CentOS-Linux-PowerTools.repo
+    regexp: 'enabled=0'
+    replace: 'enabled=1'
+  when: ansible_distribution_major_version == "8" and ansible_distribution_release == "NA" and ansible_distribution != "OracleLinux"
+  tags: update
+
+- name: Habilitando repositorio PowerTools
+  shell: /usr/bin/dnf config-manager --set-enabled "ol8_codeready_builder"
+  when: ansible_distribution_major_version == "8" and ansible_distribution == "OracleLinux"
+
+- name: Registrando repositorios
+  raw: find /etc/yum.repos.d/ -type f -name "*.repo"
+  register: repos
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux"
+  tags: update
+
+- name: Corrigindo baseurl das distribuições CentOS 8
+  replace:
+    dest: "{{ item }}"
+    regexp: "#baseurl=http://mirror.centos.org"
+    replace: "baseurl=http://vault.centos.org"
+  with_items: "{{ repos.stdout_lines }}"
+  when: ansible_distribution_major_version == "8" and ansible_distribution_release == "NA" and ansible_distribution != "OracleLinux"
+  tags: update
+
+- name: Instalando repositorio Epel-release
+  yum:
+    name: epel-release
+    state: latest
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat"
+  tags: update
+
+- name: Instalando repositorio Epel-release
+  copy:
+    src: ol8-epel.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_distribution_major_version == "8" and ansible_distribution == "OracleLinux"
+  tags: update
+
+- name: Atualizando sistema operacional
+  yum:
+    name: "*"
+    state: latest
+    update_cache: yes
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon" 
+  tags: update
+
+- name: Instalando pacotes necessarios
+  yum:
+    name: "{{ rpm_packages }}"
+    state: latest
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  tags: update
+
+- name: Removendo pacotes desnecessarios
+  yum:
+    name: ['firewalld','postfix']
+    state: absent
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  tags: update
+
+- name: Removendo pacotes desnecessarios
+  apt:
+    name: netfilter-persistent
+    state: absent
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: update
+
+- name: Atualizando cache
+  apt:
+    update_cache: yes
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: update
+
+- name: Atualizando sistema operacional
+  apt:
+    name: '*'
+    state: latest
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: update
+- name: Instalando pacotes necessarios
+  apt:
+    name: "{{ deb_packages }}"
+    state: latest
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: update

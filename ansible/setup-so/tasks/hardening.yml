@@ -1,0 +1,76 @@
+- name: Executando hardening no SSH
+  replace:
+    dest: /etc/ssh/sshd_config
+    regexp: "{{ item.From }}"
+    replace: "{{ item.To }}"
+  with_items:
+    - { From: '#AllowAgentForwarding yes', To: 'AllowAgentForwarding no' }
+    - { From: '#AllowTcpForwarding yes', To: 'AllowTcpForwarding no' }
+    - { From: '#ClientAliveCountMax 3', To: 'ClientAliveCountMax 2' }
+    - { From: '#Compression delayed', To: 'Compression no' }
+    - { From: '#LogLevel INFO', To: 'LogLevel VERBOSE' }
+    - { From: '#MaxAuthTries 6', To: 'MaxAuthTries 2' }
+    - { From: '#MaxSessions 10', To: 'MaxSessions 2' }
+    - { From: '#PermitRootLogin no', To: 'PermitRootLogin no' }
+    #- { From: '#PermitRootLogin prohibit-password', To: 'PermitRootLogin no' }
+    #- { From: '#Port 22', To: 'Port {{ ssh_port }}' }
+    - { From: '#TCPKeepAlive yes', To: 'TCPKeepAlive no' }
+    - { From: '#UseDNS yes', To: 'UseDNS no' }
+    - { From: 'X11Forwarding yes', To: 'X11Forwarding no' }
+    - { From: 'PasswordAuthentication yes', To: 'PasswordAuthentication no' }
+    - { From: 'PermitRootLogin yes', To: 'PermitRootLogin no' }
+  tags: hardening
+
+- name: Finalizando hardening no SSH
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    line: "{{ item.From }}"
+    insertafter: "{{ item.To }}"
+  with_items:
+    - { From: 'Protocol 2', To: 'Port 22' }
+    - { From: 'AllowUsers {{ ansible_user }}', To: 'PermitRootLogin no' }
+  tags: hardening
+
+- name: Desativando modulos desnecessarios
+  copy:
+    src: "{{ item }}"
+    dest: /etc/modprobe.d/
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - firewire.conf
+    - usb.conf
+  tags: hardening
+
+- name: Alterando permissoes em arquivos crontab
+  file:
+    path: "{{ item.From }}"
+    mode: "{{ item.To }}"
+  with_items:
+    - { From: '/boot/grub2/grub.cfg', To: '0600' }
+    - { From: '/etc/cron.deny', To: '0600' }
+    - { From: '/etc/crontab', To: '0600' }
+    - { From: '/etc/cron.d', To: '0700' }
+    - { From: '/etc/cron.daily', To: '0700' }
+    - { From: '/etc/cron.hourly', To: '0700' }
+    - { From: '/etc/cron.weekly', To: '0700' }
+    - { From: '/etc/cron.monthly', To: '0700' }
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "Amazon"
+  tags: hardening
+
+- name: Alterando permissoes em arquivos crontab
+  file:
+    path: "{{ item.From }}"
+    mode: "{{ item.To }}"
+  with_items:
+    - { From: '/etc/at.deny', To: '0600' }
+    - { From: '/etc/cron.deny', To: '0600' }
+    - { From: '/etc/crontab', To: '0600' }
+    - { From: '/etc/cron.d', To: '0700' }
+    - { From: '/etc/cron.daily', To: '0700' }
+    - { From: '/etc/cron.hourly', To: '0700' }
+    - { From: '/etc/cron.weekly', To: '0700' }
+    - { From: '/etc/cron.monthly', To: '0700' }
+  when: ansible_distribution == "OracleLinux"
+  tags: hardening

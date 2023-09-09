@@ -1,0 +1,11 @@
+#!/bin/sh
+
+AUDITOR="automated"
+DATE=$(date +%Y%m%d)
+HOST=$(hostname -s)
+LOG_DIR="/var/log"
+REPORT="$LOG_DIR/lynis-${HOST}.${DATE}"
+LYNIS=/usr/bin/lynis
+
+# Run Lynis
+${LYNIS} audit system --auditor "${AUDITOR}" --cronjob > ${REPORT}

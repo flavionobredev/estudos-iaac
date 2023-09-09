@@ -1,0 +1,59 @@
+- name: Copiando arquivo de tuning do sysctl
+  copy:
+    src: 10-tuning.conf
+    dest: /etc/sysctl.d/
+    owner: root
+    group: root
+    mode: 0644
+  tags: tuning
+
+- name: Removendo entradas de sysctl
+  replace:
+    dest: /usr/lib/sysctl.d/50-default.conf
+    regexp: "{{ item.From }}"
+    replace: "{{ item.To }}"
+  with_items:
+    - { From: 'kernel.sysrq = 16', To: '#kernel.sysrq = 16' }
+    - { From: 'kernel.kptr_restrict = 1', To: '#kernel.kptr_restrict = 1' }
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  tags: tuning
+
+- name: Aumentando limites do sistema operacional
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
+  with_items:
+    - "*        soft    as      unlimited"
+    - "*        hard    as      unlimited"
+    - "*        soft    cpu     unlimited"
+    - "*        hard    cpu     unlimited"
+    - "*        soft    fsize   unlimited"
+    - "*        hard    fsize   unlimited"
+    - "*        soft    nofile  65535"
+    - "*        hard    nofile  65535"
+    - "*        soft    nproc   65535"
+    - "*        hard    nproc   65535"
+    - "*        soft    stack   10240"
+    - "*        hard    stack   unlimited"
+    - "*        soft    memlock 134217728"
+    - "*        soft    memlock unlimited"
+  tags: tuning
+
+- name: Aumentando limites do sistema operacional
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
+  with_items:
+    - "root     soft    nofile  65535"
+    - "root     hard    nofile  65535"
+    - "root     soft    nproc   65535"
+    - "root     hard    nproc   65535"
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: tuning
+
+- name: Editando PAM Session
+  lineinfile:
+    path: /etc/pam.d/common-session
+    line: "session required pam_limits.so"
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: tuning

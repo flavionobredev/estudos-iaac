@@ -1,0 +1,180 @@
+- name: Definindo hostname no arquivo /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*{{ item }}$'
+    line: "{{ hostvars[item].ansible_host }} {{item}}"
+    state: present
+  when: hostvars[item].ansible_host is defined
+  with_items: "{{ groups.all }}"
+  tags: config
+
+- name: Desativando SELinux
+  ansible.posix.selinux:
+    state: disabled
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux"
+  tags: config
+
+- name: Definindo Timezone
+  timezone:
+    name: America/Fortaleza
+  tags: config
+
+- name: Removendo pools do arquivo /etc/chrony.conf
+  lineinfile:
+    path: /etc/chrony.conf
+    regexp: '^pool'
+    state: absent
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "Amazon"
+  tags: config
+
+- name: Removendo pools do arquivo /etc/chrony/chrony.conf
+  lineinfile:
+    path: /etc/chrony/chrony.conf
+    regexp: '^pool'
+    state: absent
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: config
+
+- name: Removendo pools do arquivo /etc/chrony.conf
+  lineinfile:
+    path: /etc/chrony.conf
+    regexp: '^server'
+    state: absent
+  when: ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  tags: config
+
+- name: Adicionando servidores NTP no arquivo /etc/chrony.conf
+  lineinfile:
+    path: /etc/chrony.conf
+    insertbefore: BOF
+    line: "{{ item }}"
+  with_items:
+    - "pool c.ntp.br iburst"
+    - "pool b.ntp.br iburst"
+    - "pool a.ntp.br iburst"
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "Amazon"
+  tags: config
+
+- name: Adicionando servidores NTP no arquivo /etc/chrony/chrony.conf
+  lineinfile:
+    path: /etc/chrony/chrony.conf
+    insertbefore: BOF
+    line: "{{ item }}"
+  with_items:
+    - "pool c.ntp.br iburst maxsources 1"
+    - "pool b.ntp.br iburst maxsources 1"
+    - "pool a.ntp.br iburst maxsources 1"
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: config
+
+- name: Adicionando servidores NTP no arquivo /etc/chrony.conf
+  lineinfile:
+    path: /etc/chrony.conf
+    insertbefore: BOF
+    line: "{{ item }}"
+  with_items:
+    - "server c.ntp.br iburst"
+    - "server b.ntp.br iburst"
+    - "server a.ntp.br iburst"
+  when: ansible_distribution == "OracleLinux"
+  tags: config
+
+- name: Ativando servico chronyd
+  systemd:
+    name: chronyd
+    state: started
+    enabled: yes
+  tags: config
+
+- name: Ativando servico sysstat
+  systemd:
+    name: sysstat
+    state: started
+    enabled: yes
+  tags: config
+
+- name: Criando cronjobs
+  copy:
+    src: "{{ item.From }}"
+    dest: "{{ item.To }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { From: 'aureports', To: '/etc/cron.daily/' }
+    - { From: 'lynis', To: '/etc/cron.weekly/' }
+    - { From: 'psacct', To: '/etc/cron.monthly/' }
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  tags: config
+
+- name: Criando cronjobs
+  copy:
+    src: "{{ item.From }}"
+    dest: "{{ item.To }}"
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - { From: 'aureports', To: '/etc/cron.daily/' }
+    - { From: 'lynis', To: '/etc/cron.weekly/' }
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: config
+
+- name: Alterando servico Audit
+  copy:
+    src: audit.rules
+    dest: /etc/audit/rules.d/
+    owner: root
+    group: root
+    mode: 0600
+    backup: yes
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  tags: config
+
+- name: Ativando servico psacct
+  systemd:
+    name: psacct
+    state: started
+    enabled: yes
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  tags: config
+
+- name: Customizando o arquivo /etc/bashrc
+  lineinfile:
+    path: /etc/bashrc
+    line: "{{ item }}"
+  with_items:
+    - export HISTTIMEFORMAT="%d-%m-%Y [%T]  "
+    - export PS1="\e[0;42m[\u@\h \W]\[\e[m\]\$"
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  tags: config
+
+- name: Customizando o arquivo /etc/skel/.bashrc
+  lineinfile:
+    path: /etc/skel/.bashrc
+    line: "{{ item }}"
+  with_items:
+    - export HISTTIMEFORMAT="%d-%m-%Y [%T]  "
+    - export PS1="\e[0;42m[\u@\h \W]\[\e[m\]\$"
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: config
+
+- name: Customizando o arquivo /root/.bashrc
+  lineinfile:
+    path: /root/.bashrc
+    line: "{{ item }}"
+  with_items:
+    - export HISTTIMEFORMAT="%d-%m-%Y [%T]  "
+    - export PS1="\e[0;42m[\u@\h \W]\[\e[m\]\$"
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: config
+
+- name: Customizando o arquivo /home/<user>/.bashrc
+  lineinfile:
+    path: /home/{{ ansible_user }}/.bashrc
+    line: "{{ item }}"
+  with_items:
+    - export HISTTIMEFORMAT="%d-%m-%Y [%T]  "
+    - export PS1="\e[0;42m[\u@\h \W]\[\e[m\]\$"
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
+  tags: config

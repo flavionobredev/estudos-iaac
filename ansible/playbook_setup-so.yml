@@ -1,0 +1,6 @@
+---
+- name: Playbook setup inicial
+  hosts: all
+  gather_facts: true
+  roles:
+    - setup-so

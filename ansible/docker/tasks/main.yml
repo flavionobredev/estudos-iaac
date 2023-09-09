@@ -1,0 +1,68 @@
+---
+- name: Instalando Docker
+  shell:  /usr/bin/curl -fsSL https://get.docker.com | bash -
+  when: ansible_distribution != "OracleLinux" and ansible_distribution != "Amazon" 
+
+- name: Instalando Docker
+  yum:
+    name: docker
+    state: latest
+  when: ansible_distribution == "Amazon"
+
+- name: Copiando script de instalação Docker Oracle Linux
+  shell:  /tmp/install.sh
+  when: ansible_distribution == "OracleLinux"
+
+- name: Copiando script de instalação Docker Oracle Linux
+  copy:
+    src: install.sh
+    dest: /tmp/
+    mode: 0750
+    owner: root
+    group: root
+  when: ansible_distribution == "OracleLinux"
+
+- name: Copiando arquivo de configuração do Docker e Tuning
+  copy:
+    src: "{{ item.From }}"
+    dest: "{{ item.To }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - { From: 'daemon.json', To: '/etc/docker/' }
+    - { From: '20-docker.conf', To: '/etc/sysctl.d/' }
+    - { From: 'options.conf', To: '/etc/systemd/system/docker.service.d/' }
+
+- name: Executando um reload no systemctl
+  systemd:
+    daemon_reload: yes
+
+- name: Iniciando serviço do Docker
+  systemd:
+    name: docker
+    state: restarted
+    enabled: yes
+
+- name: Instalando pacotes do Python
+  yum:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - python3
+    - python3-pip
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+
+- name: Atualizando pacote PIP
+  shell: /usr/bin/pip3 install --upgrade pip
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+  
+- name: Instalando docker-compose
+  shell: /usr/bin/pip3 install docker-compose
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat" or ansible_distribution == "OracleLinux" or ansible_distribution == "Amazon"
+
+- name: Instalando docker-compose
+  apt:
+    name: docker-compose
+    state: latest
+  when: ansible_distribution == "Debian" or ansible_distribution == "Ubuntu"
